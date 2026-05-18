@@ -12,11 +12,11 @@ import threading
 from groq import Groq
 from google import genai
 from google.genai import types
-from config import (
+from polyrouter.config import (
     GROQ_MODEL, GROQ_KEY, GEMINI_MODEL, GEMINI_KEY,
     UTILS_DIR, DEBUG, IN_DEPTH_DEBUG, CEREBRAS_KEY, CEREBRAS_MODEL
 )
-from Exceptions import (
+from polyrouter.Exceptions import (
     NoAPIKeysError, NoModelMentioned, UnknownError
 )
 from cerebras.cloud.sdk import Cerebras

@@ -20,22 +20,22 @@ The repository currently centers on three provider families:
 
 ## Badges
 
-| Badge | Meaning |
-| --- | --- |
-| ![Python](https://img.shields.io/badge/Python-3-blue) | Python implementation |
-| ![Architecture](https://img.shields.io/badge/Architecture-Config--Driven%20LLM%20Router-0A84FF) | Multi-provider failover design |
-| ![License](https://img.shields.io/badge/License-TBD-lightgrey) | Update once a formal license is chosen |
+| Badge                                                                                           | Meaning                                |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------- |
+| ![Python](https://img.shields.io/badge/Python-3-blue)                                           | Python implementation                  |
+| ![Architecture](https://img.shields.io/badge/Architecture-Config--Driven%20LLM%20Router-0A84FF) | Multi-provider failover design         |
+| ![License](https://img.shields.io/badge/License-TBD-lightgrey)                                  | Update once a formal license is chosen |
 
 ## Key Features
 
-| Capability | Technical Detail |
-| --- | --- |
-| Provider rotation | Requests can move across Groq, Gemini, and Cerebras client pools without changing application code. |
-| Key pool management | Each provider can be backed by multiple API keys, allowing the runtime to continue when a single key expires or is rate-limited. |
-| Model pool fallback | Ordered model lists in `config.py` act as a preference chain, so the router can try alternate models before surfacing a failure. |
-| Debug visibility | `DEBUG` and `IN_DEPTH_DEBUG` control log verbosity so you can switch between concise operational logs and deep request tracing. |
-| Centralized configuration | Provider counts, model lists, and debug mode live in one place instead of being duplicated across call sites. |
-| Failure isolation | Provider-specific errors do not have to terminate the entire workflow if another valid key/model combination is still available. |
+| Capability                | Technical Detail                                                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Provider rotation         | Requests can move across Groq, Gemini, and Cerebras client pools without changing application code.                              |
+| Key pool management       | Each provider can be backed by multiple API keys, allowing the runtime to continue when a single key expires or is rate-limited. |
+| Model pool fallback       | Ordered model lists in `config.py` act as a preference chain, so the router can try alternate models before surfacing a failure. |
+| Debug visibility          | `DEBUG` and `IN_DEPTH_DEBUG` control log verbosity so you can switch between concise operational logs and deep request tracing.  |
+| Centralized configuration | Provider counts, model lists, and debug mode live in one place instead of being duplicated across call sites.                    |
+| Failure isolation         | Provider-specific errors do not have to terminate the entire workflow if another valid key/model combination is still available. |
 
 ## How It Works
 
@@ -138,13 +138,13 @@ Keep the number of indexed keys aligned with the counts in `config.py`. If you c
 
 The project relies on the following core packages:
 
-| Package | Purpose |
-| --- | --- |
-| `groq` | Groq client integration |
-| `google-genai` | Gemini client integration |
-| `cerebras_cloud_sdk` | Cerebras client integration |
-| `python-dotenv` | Loads environment variables from `.env` |
-| `tenacity` | Retry primitives for failure handling |
+| Package              | Purpose                                 |
+| -------------------- | --------------------------------------- |
+| `groq`               | Groq client integration                 |
+| `google-genai`       | Gemini client integration               |
+| `cerebras_cloud_sdk` | Cerebras client integration             |
+| `python-dotenv`      | Loads environment variables from `.env` |
+| `tenacity`           | Retry primitives for failure handling   |
 
 Install them with `pip install -r requirements.txt`.
 
@@ -169,16 +169,16 @@ PY
 
 `config.py` is the primary customization point.
 
-| Setting | Role |
-| --- | --- |
-| `DEBUG` | Enables the main debug statement stream. |
+| Setting          | Role                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| `DEBUG`          | Enables the main debug statement stream.                     |
 | `IN_DEPTH_DEBUG` | Enables detailed trace output for low-level troubleshooting. |
-| `GROQ_MODEL` | Ordered Groq model preference list. |
-| `GEMINI_MODEL` | Ordered Gemini model preference list. |
-| `CEREBRAS_MODEL` | Ordered Cerebras model preference list. |
-| `GROQ_KEY` | Number of Groq API keys to scan. |
-| `GEMINI_KEY` | Number of Gemini API keys to scan. |
-| `CEREBRAS_KEY` | Number of Cerebras API keys to scan. |
+| `GROQ_MODEL`     | Ordered Groq model preference list.                          |
+| `GEMINI_MODEL`   | Ordered Gemini model preference list.                        |
+| `CEREBRAS_MODEL` | Ordered Cerebras model preference list.                      |
+| `GROQ_KEY`       | Number of Groq API keys to scan.                             |
+| `GEMINI_KEY`     | Number of Gemini API keys to scan.                           |
+| `CEREBRAS_KEY`   | Number of Cerebras API keys to scan.                         |
 
 Recommended operating model:
 
@@ -271,13 +271,13 @@ Suggested assets for a production repository:
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Resolution |
-| --- | --- | --- |
-| Import error for a provider SDK | Dependencies are missing from the active virtual environment | Re-run `pip install -r requirements.txt` inside the activated environment. |
-| Requests stop after one provider fails | No fallback keys or models are configured | Add more keys to `.env` and expand the model pool in `config.py`. |
-| All requests fail immediately | Environment variables are missing or misnamed | Verify `.env` matches `.env.template` exactly. |
-| Debug logs are too noisy | Verbosity flags are enabled | Set `DEBUG = 0` and `IN_DEPTH_DEBUG = 0` for normal operation. |
-| A specific model keeps failing | The model is unsupported, rate-limited, or exhausted | Remove it from the preference list or move it later in the rotation order. |
+| Symptom                                | Likely Cause                                                 | Resolution                                                                 |
+| -------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Import error for a provider SDK        | Dependencies are missing from the active virtual environment | Re-run `pip install -r requirements.txt` inside the activated environment. |
+| Requests stop after one provider fails | No fallback keys or models are configured                    | Add more keys to `.env` and expand the model pool in `config.py`.          |
+| All requests fail immediately          | Environment variables are missing or misnamed                | Verify `.env` matches `.env.template` exactly.                             |
+| Debug logs are too noisy               | Verbosity flags are enabled                                  | Set `DEBUG = 0` and `IN_DEPTH_DEBUG = 0` for normal operation.             |
+| A specific model keeps failing         | The model is unsupported, rate-limited, or exhausted         | Remove it from the preference list or move it later in the rotation order. |
 
 ## Contributing
 
@@ -325,4 +325,3 @@ It also follows a common open-source reliability pattern: fail over without forc
 License: TBD.
 
 Add the repository's chosen license here once it is finalized, and keep the license file in sync with this section.
-
