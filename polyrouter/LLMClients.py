@@ -66,7 +66,7 @@ class GroqLLM(LLM):
                     )
                     self.clients.append(client)
                     if self.IN_DEPTH_DEBUG:
-                        logger.debug("GROQ : Working Key %s", api_key)
+                        logger.debug("GROQ : Working Key ....%s", api_key[10:])
                         logger.debug("Output: %s", response.choices[0].message.content)
 
                     # # What is the current api fails for 1/2 model and works on other -> just give a warning to user
@@ -87,20 +87,20 @@ class GroqLLM(LLM):
 
 
                             except Exception as e:
-                                logger.error("GROQ : Model usage failed %s : %s", api_key, model)
+                                logger.error("GROQ : Model usage failed ....%s : %s", api_key[10:], model)
                                 # # Uncomment if you want to stop code if 'model' fails
-                                # raise UnknownError(f"GROQ : Model usage failed -> {api_key} : {model}")
+                                # raise UnknownError(f"GROQ : Model usage failed -> ....{api_key[10:]} : {model}")
                         
                 except Exception as e:
-                    logger.error("GROQ : Model usage failed %s", api_key)
+                    logger.error("GROQ : Model usage failed ....%s", api_key[10:])
                     if self.IN_DEPTH_DEBUG:
                         logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
-                    # raise UnknownError(f"GROQ : API Error Initialising or 1st Model in GROQ_LLM failed : with API key {api_key}")
+                    # raise UnknownError(f"GROQ : API Error Initialising or 1st Model in GROQ_LLM failed : with API key ....{api_key[10:]}")
                     # print("===============================================================")
 
             else:
-                raise NoAPIKeysError(f"GROQ : Key {api_key} is missing or has an invalid format.")
+                raise NoAPIKeysError(f"GROQ : Key ....{api_key[10:]} is missing or has an invalid format.")
 
         if len(self.clients) == 0:
             raise NoAPIKeysError("GROQ : No valid API keys found.")
@@ -253,7 +253,7 @@ class GeminiLLM(LLM):
                     self.clients.append(client)
 
                     if self.IN_DEPTH_DEBUG:
-                        logger.debug("GEMINI : Working Key %s", api_key)
+                        logger.debug("GEMINI : Working Key ....%s", api_key[10:])
                         logger.debug("Output: %s", response.text)
 
                     # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
@@ -275,21 +275,21 @@ class GeminiLLM(LLM):
 
                             
                             except Exception as e:
-                                logger.error("GEMINI : Model usage failed %s : %s", api_key, model)
+                                logger.error("GEMINI : Model usage failed ....%s : %s", api_key[10:], model)
                                 # # Uncomment if you want to stop in between if model fails
-                                # raise UnknownError(f"GEMINI : Model usage failed {api_key} : {model}")
+                                # raise UnknownError(f"GEMINI : Model usage failed ....{api_key[10:]} : {model}")
                         
 
                 except Exception as e:
-                    logger.error("GEMINI : API usage failed %s", api_key)
+                    logger.error("GEMINI : API usage failed ....%s", api_key[10:])
                     if self.IN_DEPTH_DEBUG:
                         logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
-                    # raise UnknownError(f"GEMINI : API Error Initialising or 1st Model in GEMINI_LLM failed : with API key {api_key}")
+                    # raise UnknownError(f"GEMINI : API Error Initialising or 1st Model in GEMINI_LLM failed : with API key ....{api_key[10:]}")
                     # print("===============================================================")
 
             else:
-                raise NoAPIKeysError(f"GEMINI : Key {api_key} is missing or has an invalid format.")
+                raise NoAPIKeysError(f"GEMINI : Key ....{api_key[10:]} is missing or has an invalid format.")
 
         if len(self.clients) == 0:
             raise NoAPIKeysError("GEMINI : No valid API keys found.")
@@ -426,7 +426,7 @@ class CereBrasLLM(LLM):
                     )
                     self.clients.append(client)
                     if self.IN_DEPTH_DEBUG:
-                        logger.debug("CEREBRAS : Working Key %s", api_key)
+                        logger.debug("CEREBRAS : Working Key ....%s", api_key[10:])
                         logger.debug("Output: %s", response.choices[0].message.content)
 
                     # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
@@ -456,20 +456,20 @@ class CereBrasLLM(LLM):
 
 
                             except Exception as e:
-                                logger.error("CEREBRAS : Model usage failed %s : %s", api_key, model)
+                                logger.error("CEREBRAS : Model usage failed ....%s : %s", api_key[10:], model)
                                 # # Uncomment if you want to stop code if 'model' fails
-                                # raise UnknownError(f"CEREBRAS : Model usage failed {api_key} : {model}")
+                                # raise UnknownError(f"CEREBRAS : Model usage failed ....{api_key[10:]} : {model}")
                         
                 except Exception as e:
-                    logger.error("CEREBRAS : Model usage failed %s", api_key)
+                    logger.error("CEREBRAS : Model usage failed ....%s", api_key[10:])
                     if self.IN_DEPTH_DEBUG:
                         logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
-                    # raise UnknownError(f"CEREBRAS : API Error Initialising or 1st Model in CEREBRAS_LLM failed : with API key {api_key}")
+                    # raise UnknownError(f"CEREBRAS : API Error Initialising or 1st Model in CEREBRAS_LLM failed : with API key ....{api_key[10:]}")
                     # print("===============================================================")
 
             else:
-                raise NoAPIKeysError(f"CEREBRAS : Key {api_key} is missing or has an invalid format.")
+                raise NoAPIKeysError(f"CEREBRAS : Key ....{api_key[10:]} is missing or has an invalid format.")
 
         if len(self.clients) == 0:
             raise NoAPIKeysError("CEREBRAS : No valid API keys found.")

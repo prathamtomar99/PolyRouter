@@ -18,22 +18,22 @@ class LLMOrchestrator:
     def __init__(self, groq=None, gemini=None, cerebras=None, debug = 0, verbose = 0, prompt="You are a helpful assistant", temperature=0.5, max_output_tokens=1000,test_mode=0):
         self.clients: list[LLM] = []
         if(groq and groq.get("groq_models") and groq.get("groq_keys")):
-            if(debug):
-                print("GROQ_KEYS: ",groq["groq_keys"])
+            # if(debug):
+            #     print("GROQ_KEYS: ",groq["groq_keys"])
             self.clients.append(
                 GroqLLM(groq["groq_models"], groq["groq_keys"], prompt=prompt, temperature=temperature,max_output_tokens=max_output_tokens,DEBUG=debug,IN_DEPTH_DEBUG=verbose,test_mode=test_mode),
             )
 
         if(gemini and gemini.get("gemini_models") and gemini.get("gemini_keys")):
-            if(debug):
-                print("GEMINI_KEYS: ",gemini["gemini_keys"])
+            # if(debug):
+            #     print("GEMINI_KEYS: ",gemini["gemini_keys"])
             self.clients.append(
                 GeminiLLM(gemini["gemini_models"], gemini["gemini_keys"], prompt=prompt, temperature=temperature,max_output_tokens=max_output_tokens,DEBUG=debug,IN_DEPTH_DEBUG=verbose,test_mode=test_mode),
             )
 
         if(cerebras and cerebras.get("cerebras_models") and cerebras.get("cerebras_keys")):
-            if(debug):
-                print("CEREBRAS_KEYS: ",cerebras["cerebras_keys"])
+            # if(debug):
+            #     print("CEREBRAS_KEYS: ",cerebras["cerebras_keys"])
             self.clients.append(
                 CereBrasLLM(cerebras["cerebras_models"], cerebras["cerebras_keys"], prompt=prompt, temperature=temperature,max_output_tokens=max_output_tokens,DEBUG=debug,IN_DEPTH_DEBUG=verbose,test_mode=test_mode),
             )

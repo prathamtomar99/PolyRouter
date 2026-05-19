@@ -3,6 +3,10 @@
 # metadata for the library
 
 from .LLMOrchestrator import LLMOrchestrator
+import logging
+
+# prevent unexpected output if user dont want to see logs
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 from .Exceptions import (
     AllModelsFailedError,
