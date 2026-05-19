@@ -1,583 +1,83 @@
 # File respnsible for handling LLMClients and handle dynamic model and client routing
 
 
-
-from abc import ABC, abstractmethod
-import os
-import groq
-from dotenv import load_dotenv
-import json
+from .LLMClients import LLM, GroqLLM, GeminiLLM, CereBrasLLM
+from .Exceptions import AllClientsExhaustedError, AllModelsFailedError
 import threading
-from groq import Groq
-from google import genai
-from google.genai import types
-from config import (
-    GROQ_MODEL, GROQ_KEY, GEMINI_MODEL, GEMINI_KEY,
-    UTILS_DIR, DEBUG, IN_DEPTH_DEBUG, CEREBRAS_KEY, CEREBRAS_MODEL
-)
-from Utils.Exceptions import (
-    NoAPIKeysError, NoModelMentioned, UnknownError
-)
-from cerebras.cloud.sdk import Cerebras
 
-load_dotenv()
-CURR_DIR = UTILS_DIR / "LLMClients.py"
+CURR_DIR = "LLMOrchestrator"
 
-class LLM(ABC):
+class LLMOrchestrator:
     """
-    Each LLM subclass manages its own keys and models.
-    call() returns None when fully exhausted (all keys x all models tried).
-    InitLLM uses this signal to switch to the next client.
+    - Holds all LLM Client Object.
+    - Stays on current client until it returns None (fully exhausted).
+    - Moves to next client and stays there until it too is exhausted.
+    - Raises AllModelsFailedError only when every client is exhausted.
     """
-    @abstractmethod
-    def call(self, user_input, json_mode=False):
-        pass
-
-# If a particulat api key model crashes it should work for and it works for other api key, then dont crash the whole system , just switch api key
-# always take the first model whose TPM is available (otherwise client building fails -> assume wrong client and crash)
-# or hardcode model checking in try block e.g. model=GROQ_MODEL[0] -> model="openai/gpt-oss-120b"
-
-# ------------------------------------------- GROQ ------------------------------------------- 
-
-class GroqLLM(LLM):
-    def __init__(self, prompt="You are a helpful assistant", temperature=0.5, max_output_tokens=500):
-        if len(GROQ_MODEL) == 0:
-            raise NoModelMentioned("GROQ : No models listed in GROQ_MODEL.")
-
-        self.prompt = prompt
-        self.temperature = temperature
-        self.max_output_tokens = max_output_tokens
-        self._lock = threading.Lock()
-        self.clients = []
-
-        # storing all client so that we dont get any issue once clients are build
-        for key_no in range(GROQ_KEY):
-            api_key = os.getenv(f"GROQ_API_KEY{key_no}")
-            if api_key and api_key.startswith("gsk"):
-
-                # check if key is really valid or not -> pipeline doenst break inbetween
-                try:
-                    client = Groq(api_key=api_key)
-                    response = client.chat.completions.create(
-                        model=GROQ_MODEL[0],
-                        messages=[
-                            {"role": "user", "content": "Reply: ok"}
-                        ],
-                        max_completion_tokens=100
-                    )
-                    self.clients.append(client)
-                    if(IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GROQ : Working Key {key_no} -> {api_key}")
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : Output: ",response.choices[0].message.content)
-
-                    # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
-                    # for model in GROQ_MODEL:
-                    #     try:
-                    #         response = client.chat.completions.create(
-                    #             model=model,
-                    #             messages=[
-                    #                 {"role": "user", "content": "Reply: ok"}
-                    #             ],
-                    #             max_completion_tokens=100
-                    #         )
-
-                    #         if(IN_DEPTH_DEBUG):
-                    #             print("===============================================================")
-                    #             print(f"\tGROQ : Working Model {model}")
-                    #             print("Outout: ",response.choices[0].message.content)
-
-
-                    #     except Exception as e:
-                    #         print("===============================================================")
-                    #         print(f"GROQ : Model usage failed {key_no} -> {api_key} : {model}")
-                    #         print("===============================================================")
-                    #         # # Uncomment if you want to stop code if 'model' fails
-                    #         # raise UnknownError(f"GROQ : Model usage failed {key_no} -> {api_key} : {model}")
-                        
-                except Exception as e:
-                    print("===============================================================")
-                    print(f"[{CURR_DIR}] : GROQ : Model usage failed {key_no} -> {api_key}")
-                    print("===============================================================")
-                    # # Uncomment if you want to fail if api key fails
-                    # raise UnknownError(f"GROQ : API Error Initialising or 1st Model in GROQ_LLM failed : with API key {key_no} -> {api_key}")
-                    # print("===============================================================")
-
-            else:
-                raise NoAPIKeysError(f"GROQ : Key {key_no} is missing or has an invalid format.")
-
-        if len(self.clients) == 0:
-            raise NoAPIKeysError("GROQ : No valid API keys found.")
-
-        self.models = list(GROQ_MODEL)  
-        self.current_model_idx = 0
-        self.current_client_idx = 0
-
-
-    def _get_current(self):
-        with self._lock:
-            if DEBUG:
-                print(f"Using Model : {self.models[self.current_model_idx]}")
-            return (
-                self.clients[self.current_client_idx],
-                self.models[self.current_model_idx]
+ 
+    def __init__(self, groq=None, gemini=None, cerebras=None, debug = 0, verbose = 0, prompt="You are a helpful assistant", temperature=0.5, max_output_tokens=1000,test_mode=0):
+        self.clients: list[LLM] = []
+        if(groq and groq.get("groq_models") and groq.get("groq_keys")):
+            if(debug):
+                print("GROQ_KEYS: ",groq["groq_keys"])
+            self.clients.append(
+                GroqLLM(groq["groq_models"], groq["groq_keys"], prompt=prompt, temperature=temperature,max_output_tokens=max_output_tokens,DEBUG=debug,IN_DEPTH_DEBUG=verbose,test_mode=test_mode),
             )
 
-
-    def _rotate_client(self):
-        """Move to next key. Returns True if a full cycle of all keys is complete."""
-        with self._lock:
-            self.current_client_idx += 1
-            if self.current_client_idx == len(self.clients):
-                self.current_client_idx = 0
-
-
-    def _rotate_model(self):
-        """Move to next model. Returns True if all models are exhausted."""
-        with self._lock:
-            self.current_model_idx += 1
-            self.current_client_idx = 0
-            if self.current_model_idx == len(self.models):
-                self.current_model_idx = 0
-
-
-    # return number of tokens left with current client 
-    # if number of tokens left < 500, maybe for next response they are not enough, so rotate proactively
-    def _get_remaining_tokens(self, response) -> int:
-        tokens_str = response.headers.get('x-ratelimit-remaining-tokens')
-        if IN_DEPTH_DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : GROQ Tokens Remaining: {tokens_str}")
-        return int(tokens_str) if tokens_str is not None else 9999
-
-
-    def call(self, user_input, json_mode=False):
-        """
-        Rotation strategy:
-          1. Try current key on current model.
-          2. On failure -> rotate key.
-          3. All keys exhausted on current model -> rotate model, reset keys.
-          4. All models exhausted -> return None (signals InitLLM to switch client).
-        """
-        models_tried = 0
-
-        while models_tried < len(self.models):
-            keys_tried = 0
-
-            while keys_tried < len(self.clients):
-                client, model = self._get_current()
-                try:
-                    kwargs = {
-                        "model": model,
-                        "temperature": self.temperature,
-                        "max_tokens": self.max_output_tokens,
-                        "messages": [
-                            {"role": "system", "content": self.prompt},
-                            {"role": "user", "content": user_input}
-                        ]
-                    }
-                    if json_mode:
-                        kwargs["response_format"] = {"type": "json_object"}
-
-                    response = client.chat.completions.with_raw_response.create(**kwargs)
-
-                    if self._get_remaining_tokens(response) < 500:
-                        if DEBUG:
-                            print("===============================================================")
-                            print(f"[{CURR_DIR}] : GROQ Low tokens on key {self.current_client_idx}, rotating proactively.")
-                        keys_tried += 1
-                        self._rotate_client()
-
-                    parsed = response.parse()
-                    output_text = parsed.choices[0].message.content
-
-                    if(IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : {user_input}      :       {output_text}")
-
-                    if json_mode:
-                        return json.loads(output_text)
-                    return output_text
-
-                except Exception as e:
-                    if IN_DEPTH_DEBUG:
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GROQ Unknown error on key {self.current_client_idx}: {e}")
-                    keys_tried += 1
-                    self._rotate_client()
-
-            if IN_DEPTH_DEBUG:
-                print("===============================================================")
-                print(f"[{CURR_DIR}] : GROQ All keys exhausted for model '{self.models[self.current_model_idx]}'. Rotating model.")
-
-            models_tried += 1
-            self._rotate_model()
-
-
-        if DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : GROQ All keys x all models exhausted.")
-        return None
-    
-
-
-
-# ------------------------------------------- GEMINI ------------------------------------------- 
-# cannot move proactively as gemini doesn't provide the TPM left
-# check if it is giving response, if it stucks then rotate model 
-class GeminiLLM(LLM):
-    def __init__(self, prompt="You are a helpful assistant", temperature=0.5, max_output_tokens=500):
-        if len(GEMINI_MODEL) == 0:
-            raise NoModelMentioned("GEMINI : No models listed in GEMINI_MODEL.")
-
-        self.prompt = prompt
-        self.temperature = temperature
-        self.max_output_tokens = max_output_tokens
-        self._lock = threading.Lock()
-        self.clients = []
-
-        # storing all client so that we dont get any issue once clients are build 
-        for key_no in range(GEMINI_KEY):
-            api_key = os.getenv(f"GEMINI_API_KEY{key_no}")
-            if api_key and api_key.startswith("AIz"):
-
-                # check if key is really valid or not -> pipeline doenst break inbetween 
-                try:
-                    client = genai.Client(api_key=api_key)
-                    contents = [
-                        types.Content(
-                            role="user",
-                            parts=[types.Part(text="Reply: ok")]
-                        )
-                    ]
-                    response = client.models.generate_content(
-                        model=GEMINI_MODEL[0],
-                        contents=contents,
-                        config=types.GenerateContentConfig(
-                            temperature=0.1,
-                            max_output_tokens=100,
-                        )
-                    )
-                    self.clients.append(client)
-
-                    if(IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GEMINI : Working Key {key_no} -> {api_key}")
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : Output: ",response.text)
-
-                    # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
-                    # for model in GEMINI_MODEL:
-                    #     try:
-                    #         response = client.models.generate_content(
-                    #             model=model,
-                    #             contents=contents,
-                    #             config=types.GenerateContentConfig(
-                    #                 temperature=0.1,
-                    #                 max_output_tokens=100,
-                    #             )
-                    #         )
-
-                    #         if(IN_DEPTH_DEBUG):
-                    #             print("===============================================================")
-                    #             print(f"\tGEMINI : Working Model {model}")
-                    #             print("Output: ",response.text)
-
-                        
-                    #     except Exception as e:
-                    #         print("===============================================================")
-                    #         print(f"GEMINI : Model usage failed {key_no} -> {api_key} : {model}")
-                    #         print("===============================================================")
-                    #         # # Uncomment if you want to stop in between if model fails
-                    #         # raise UnknownError(f"GEMINI : Model usage failed {key_no} -> {api_key} : {model}")
-                        
-
-                except Exception as e:
-                    print("===============================================================")
-                    print(f"[{CURR_DIR}] : GEMINI : API usage failed {key_no} -> {api_key} ")
-                    print("===============================================================")
-                    # # Uncomment if you want to fail if api key fails
-                    # raise UnknownError(f"GEMINI : API Error Initialising or 1st Model in GEMINI_LLM failed : with API key {key_no} -> {api_key}")
-                    # print("===============================================================")
-
-            else:
-                raise NoAPIKeysError(f"GEMINI : Key {key_no} is missing or has an invalid format.")
-
-        if len(self.clients) == 0:
-            raise NoAPIKeysError("GEMINI : No valid API keys found.")
-
-        self.models = list(GEMINI_MODEL)  
-        self.current_model_idx = 0
-        self.current_client_idx = 0
-
-
-    def _get_current(self):
-        with self._lock:
-            if DEBUG:
-                print(f"Using Model : {self.models[self.current_model_idx]}")
-            return (
-                self.clients[self.current_client_idx],
-                self.models[self.current_model_idx]
+        if(gemini and gemini.get("gemini_models") and gemini.get("gemini_keys")):
+            if(debug):
+                print("GEMINI_KEYS: ",gemini["gemini_keys"])
+            self.clients.append(
+                GeminiLLM(gemini["gemini_models"], gemini["gemini_keys"], prompt=prompt, temperature=temperature,max_output_tokens=max_output_tokens,DEBUG=debug,IN_DEPTH_DEBUG=verbose,test_mode=test_mode),
             )
 
-
-    def _rotate_client(self):
-        """Move to next key. Returns True if a full cycle of all keys is complete."""
-        with self._lock:
-            self.current_client_idx += 1
-            if self.current_client_idx == len(self.clients):
-                self.current_client_idx = 0
-
-
-    def _rotate_model(self):
-        """Move to next model. Returns True if all models are exhausted."""
-        with self._lock:
-            self.current_model_idx += 1
-            self.current_client_idx = 0
-            if self.current_model_idx == len(self.models):
-                self.current_model_idx = 0
-
-
-    def call(self, user_input, json_mode=False):
-        """
-        Rotation strategy:
-          1. Try current key on current model.
-          2. On failure -> rotate key.
-          3. All keys exhausted on current model -> rotate model, reset keys.
-          4. All models exhausted -> return None (signals InitLLM to switch client).
-        """
-        models_tried = 0
-
-        while models_tried < len(self.models):
-            keys_tried = 0
-
-            while keys_tried < len(self.clients):
-                client, model = self._get_current()
-                try:
-
-                    contents = [types.Content(role="user", parts=[types.Part(text=user_input)])]
-                    config = types.GenerateContentConfig(
-                        system_instruction=self.prompt,
-                        temperature=self.temperature,
-                        max_output_tokens=self.max_output_tokens,
-                        response_mime_type="application/json" if json_mode else None
-                    )
-                    response = client.models.generate_content(model=model, contents=contents, config=config)
-
-                    output_text = response.text
-
-                    if(IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : {user_input}      :       {output_text}")
-
-                    if json_mode:
-                        return json.loads(output_text)
-                    return output_text
-
-                except Exception as e:
-                    if IN_DEPTH_DEBUG:
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GEMINI Unknown error on key {self.current_client_idx}: {e}")
-                    keys_tried += 1
-                    self._rotate_client()
-
-            if IN_DEPTH_DEBUG:
-                print("===============================================================")
-                print(f"[{CURR_DIR}] : GEMINI All keys exhausted for model '{self.models[self.current_model_idx]}'. Rotating model.")
-
-            models_tried += 1
-            self._rotate_model()
-
-
-        if DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : GEMINI All keys x all models exhausted.")
-        return None
-    
-
-# ------------------------------------------- CEREBRAS ------------------------------------------- 
-# cannot move proactively as gemini doesn't provide the TPM left
-# check if it is giving response, if it stucks then rotate model 
-class CereBrasLLM(LLM):
-    def __init__(self, prompt="You are a helpful assistant", temperature=0.5, max_output_tokens=500):
-        if len(CEREBRAS_MODEL) == 0:
-            raise NoModelMentioned("CEREBRAS : No models listed in CEREBRAS_MODEL.")
-
-        self.prompt = prompt
-        self.temperature = temperature
-        self.max_output_tokens = max_output_tokens
-        self._lock = threading.Lock()
-        self.clients = []
-
-        # storing all client so that we dont get any issue once clients are build
-        for key_no in range(CEREBRAS_KEY):
-            api_key = os.getenv(f"CEREBRAS_API_KEY{key_no}")
-            if api_key and api_key.startswith("csk"):
-
-                # check if key is really valid or not -> pipeline doenst break inbetween
-                try:
-                    client = Cerebras(api_key=api_key)
-                    response = client.chat.completions.create(
-                        model=CEREBRAS_MODEL[0],
-                        max_completion_tokens=200,
-                        temperature=0.2,
-                        top_p=1,
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": "Output exactly the requested text. No extra words."
-                            },
-                            {
-                                "role": "user",
-                                "content": "Return exactly: ok"
-                            }
-                        ],
-                    )
-                    self.clients.append(client)
-                    if(IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : CEREBRAS : Working Key {key_no} -> {api_key}")
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : Output: ",response.choices[0].message.content)
-
-                    # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
-                    # for model in CEREBRAS_MODEL:
-                    #     try:
-                    #         response = client.chat.completions.create(
-                    #             model=model,
-                    #             max_completion_tokens=200,
-                    #             temperature=0.2,
-                    #             top_p=1,
-                    #             messages=[
-                    #                 {
-                    #                     "role": "system",
-                    #                     "content": "Output exactly the requested text. No extra words."
-                    #                 },
-                    #                 {
-                    #                     "role": "user",
-                    #                     "content": "Return exactly: ok"
-                    #                 }
-                    #             ],
-                    #         )
-
-                    #         if(IN_DEPTH_DEBUG):
-                    #             print("===============================================================")
-                    #             print(f"\tCEREBRAS : Working Model {model}")
-                    #             print("Outout: ",response.choices[0].message.content)
-
-
-                    #     except Exception as e:
-                    #         print("===============================================================")
-                    #         print(f"CEREBRAS : Model usage failed {key_no} -> {api_key} : {model}")
-                    #         print("===============================================================")
-                    #         # # Uncomment if you want to stop code if 'model' fails
-                    #         # raise UnknownError(f"CEREBRAS : Model usage failed {key_no} -> {api_key} : {model}")
-                        
-                except Exception as e:
-                    print("===============================================================")
-                    print(f"[{CURR_DIR}] : CEREBRAS : Model usage failed {key_no} -> {api_key}")
-                    print("===============================================================")
-                    # # Uncomment if you want to fail if api key fails
-                    # raise UnknownError(f"CEREBRAS : API Error Initialising or 1st Model in CEREBRAS_LLM failed : with API key {key_no} -> {api_key}")
-                    # print("===============================================================")
-
-            else:
-                raise NoAPIKeysError(f"CEREBRAS : Key {key_no} is missing or has an invalid format.")
-
-        if len(self.clients) == 0:
-            raise NoAPIKeysError("CEREBRAS : No valid API keys found.")
-
-        self.models = list(CEREBRAS_MODEL)  
-        self.current_model_idx = 0
-        self.current_client_idx = 0
-
-
-    def _get_current(self):
-        with self._lock:
-            if DEBUG:
-                print(f"Using Model : {self.models[self.current_model_idx]}")
-            return (
-                self.clients[self.current_client_idx],
-                self.models[self.current_model_idx]
+        if(cerebras and cerebras.get("cerebras_models") and cerebras.get("cerebras_keys")):
+            if(debug):
+                print("CEREBRAS_KEYS: ",cerebras["cerebras_keys"])
+            self.clients.append(
+                CereBrasLLM(cerebras["cerebras_models"], cerebras["cerebras_keys"], prompt=prompt, temperature=temperature,max_output_tokens=max_output_tokens,DEBUG=debug,IN_DEPTH_DEBUG=verbose,test_mode=test_mode),
             )
-
-
-    def _rotate_client(self):
-        """Move to next key. Returns True if a full cycle of all keys is complete."""
+ 
+        if len(self.clients) == 0:
+            raise AllClientsExhaustedError("InitLLM : No LLM clients configured. Either models or keys are empty")
+ 
+        self.current_idx = 0
+        self.DEBUG = debug
+        self.IN_DEPTH_DEBUG = verbose
+        self._lock = threading.Lock()
+ 
+    def _rotate_client(self) -> bool:
+        """Move to next available client. Returns False if all are exhausted."""
         with self._lock:
-            self.current_client_idx += 1
-            if self.current_client_idx == len(self.clients):
-                self.current_client_idx = 0
-
-
-    def _rotate_model(self):
-        """Move to next model. Returns True if all models are exhausted."""
-        with self._lock:
-            self.current_model_idx += 1
-            self.current_client_idx = 0
-            if self.current_model_idx == len(self.models):
-                self.current_model_idx = 0
-
-
+            self.current_idx += 1
+            return self.current_idx < len(self.clients)
+ 
     def call(self, user_input, json_mode=False):
         """
-        Rotation strategy:
-          1. Try current key on current model.
-          2. On failure -> rotate key.
-          3. All keys exhausted on current model -> rotate model, reset keys.
-          4. All models exhausted -> return None (signals InitLLM to switch client).
+        Try current client. If it returns None (exhausted),
+        move to next and stay there. Repeat until all exhausted.
         """
-        models_tried = 0
-
-        while models_tried < len(self.models):
-            keys_tried = 0
-
-            while keys_tried < len(self.clients):
-                client, model = self._get_current()
-                try:
-                    kwargs = {
-                        "model": model,
-                        "temperature": self.temperature,
-                        "max_tokens": self.max_output_tokens,
-                        "messages": [
-                            {"role": "system", "content": self.prompt},
-                            {"role": "user", "content": user_input}
-                        ]
-                    }
-
-                    if json_mode:
-                        kwargs["response_format"] = {"type": "json_object"}
-
-                    response = client.chat.completions.with_raw_response.create(**kwargs)
-
-                    parsed_response = response.parse()
-                    output_text = parsed_response.choices[0].message.content
-
-                    if(IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : {user_input}      :       {output_text}")
-
-                    if json_mode:
-                        return json.loads(output_text)
-                    return output_text
-
-                except Exception as e:
-                    if IN_DEPTH_DEBUG:
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : CEREBRAS Unknown error on key {self.current_client_idx}: {e}")
-                    keys_tried += 1
-                    self._rotate_client()
-
-            if IN_DEPTH_DEBUG:
-                print("===============================================================")
-                print(f"[{CURR_DIR}] : CEREBRAS All keys exhausted for model '{self.models[self.current_model_idx]}'. Rotating model.")
-
-            models_tried += 1
-            self._rotate_model()
-
-
-        if DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : CEREBRAS All keys x all models exhausted.")
-        return None
+        while True:
+            with self._lock:
+                current_client = self.clients[self.current_idx]
+ 
+            result = current_client.call(user_input, json_mode=json_mode)
+ 
+            if result is not None:
+                return result
+ 
+            # Current client fully exhausted — move to next
+            if self.DEBUG:
+                print(f"[{CURR_DIR}] Client {self.current_idx} ({type(current_client).__name__}) exhausted. Switching.")
+ 
+            has_next = self._rotate_client()
+ 
+            if not has_next:
+                break
+ 
+        # instead of this we can put a while loop which breaks and raise error after 5 or 10 repetative failures
+        # cause every failure tells a story -> maybe that failure is no more a failure
+        # are bhaiya recover ho gaya hoga so (TPM resets after 1 min in groq sooo) (not in gemini)
+        raise AllModelsFailedError(
+            f"[{CURR_DIR}] All clients and models failed -> {CURR_DIR}"
+        )

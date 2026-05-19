@@ -1,7 +1,5 @@
 # this file will be responsible for defination of all the user defined Exceptions
 
-from polyrouter.config import IN_DEPTH_DEBUG
-
 class InvalidTranslation(Exception):
     def __init__(self,message):
         print("==========================================")
