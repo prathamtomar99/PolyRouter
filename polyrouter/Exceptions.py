@@ -1,18 +1,11 @@
 # this file will be responsible for defination of all the user defined Exceptions
+import logging
 
-class InvalidTranslation(Exception):
-    def __init__(self,message):
-        print("==========================================")
-        print(message)
-        print("==========================================")
-        super().__init__(message)
-
+logger = logging.getLogger(__name__)
 
 class LLMError(Exception):
     def __init__(self, message):
-        print("==========================================")
-        print(message)
-        print("==========================================")
+        logger.error(message)
         super().__init__(message)
 
 

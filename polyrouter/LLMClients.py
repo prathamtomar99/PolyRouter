@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import os
 import json
 import threading
+import logging
 from groq import Groq
 from google import genai
 from google.genai import types
@@ -15,7 +16,7 @@ from .Exceptions import (
 )
 from cerebras.cloud.sdk import Cerebras
 
-CURR_DIR = "LLMClients.py"
+logger = logging.getLogger(__name__)
 
 class LLM(ABC):
     """
@@ -64,11 +65,9 @@ class GroqLLM(LLM):
                         max_completion_tokens=100
                     )
                     self.clients.append(client)
-                    if(self.IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GROQ : Working Key {api_key}")
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : Output: ",response.choices[0].message.content)
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("GROQ : Working Key %s", api_key)
+                        logger.debug("Output: %s", response.choices[0].message.content)
 
                     # # What is the current api fails for 1/2 model and works on other -> just give a warning to user
                     if(test_mode): 
@@ -82,25 +81,20 @@ class GroqLLM(LLM):
                                     max_completion_tokens=100
                                 )
 
-                                if(self.IN_DEPTH_DEBUG):
-                                    print("===============================================================")
-                                    print(f"\tGROQ : Working Model {model}")
-                                    print("Outout: ",response.choices[0].message.content)
+                                if self.IN_DEPTH_DEBUG:
+                                    logger.debug("GROQ : Working Model %s", model)
+                                    logger.debug("Output: %s", response.choices[0].message.content)
 
 
                             except Exception as e:
-                                print("===============================================================")
-                                print(f"GROQ : Model usage failed {api_key} : {model}")
-                                print("===============================================================")
+                                logger.error("GROQ : Model usage failed %s : %s", api_key, model)
                                 # # Uncomment if you want to stop code if 'model' fails
                                 # raise UnknownError(f"GROQ : Model usage failed -> {api_key} : {model}")
                         
                 except Exception as e:
-                    print("===============================================================")
-                    print(f"[{CURR_DIR}] : GROQ : Model usage failed {api_key}")
-                    if(self.IN_DEPTH_DEBUG):
-                        print(e)
-                    print("===============================================================")
+                    logger.error("GROQ : Model usage failed %s", api_key)
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
                     # raise UnknownError(f"GROQ : API Error Initialising or 1st Model in GROQ_LLM failed : with API key {api_key}")
                     # print("===============================================================")
@@ -119,7 +113,7 @@ class GroqLLM(LLM):
     def _get_current(self):
         with self._lock:
             if self.DEBUG:
-                print(f"Using Model : {self.models[self.current_model_idx]}")
+                logger.info("Using Model: %s", self.models[self.current_model_idx])
             return (
                 self.clients[self.current_client_idx],
                 self.models[self.current_model_idx]
@@ -148,8 +142,7 @@ class GroqLLM(LLM):
     def _get_remaining_tokens(self, response) -> int:
         tokens_str = response.headers.get('x-ratelimit-remaining-tokens')
         if self.IN_DEPTH_DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : GROQ Tokens Remaining: {tokens_str}")
+            logger.debug("GROQ Tokens Remaining: %s", tokens_str)
         return int(tokens_str) if tokens_str is not None else 9999
 
 
@@ -185,17 +178,15 @@ class GroqLLM(LLM):
 
                     if self._get_remaining_tokens(response) < 500:
                         if self.DEBUG:
-                            print("===============================================================")
-                            print(f"[{CURR_DIR}] : GROQ Low tokens on key {self.current_client_idx}, rotating proactively.")
+                            logger.info("GROQ Low tokens on key %s, rotating proactively.", self.current_client_idx)
                         keys_tried += 1
                         self._rotate_client()
 
                     parsed = response.parse()
                     output_text = parsed.choices[0].message.content
 
-                    if(self.IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : {user_input}      :       {output_text}")
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("%s : %s", user_input, output_text)
 
                     if json_mode:
                         return json.loads(output_text)
@@ -203,22 +194,19 @@ class GroqLLM(LLM):
 
                 except Exception as e:
                     if self.IN_DEPTH_DEBUG:
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GROQ Unknown error on key {self.current_client_idx}: {e}")
+                        logger.debug("GROQ Unknown error on key %s", self.current_client_idx, exc_info=True)
                     keys_tried += 1
                     self._rotate_client()
 
             if self.IN_DEPTH_DEBUG:
-                print("===============================================================")
-                print(f"[{CURR_DIR}] : GROQ All keys exhausted for model '{self.models[self.current_model_idx]}'. Rotating model.")
+                logger.debug("GROQ All keys exhausted for model '%s'. Rotating model.", self.models[self.current_model_idx])
 
             models_tried += 1
             self._rotate_model()
 
 
         if self.DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : GROQ All keys x all models exhausted.")
+            logger.info("GROQ All keys x all models exhausted.")
         return None
 
 
@@ -264,11 +252,9 @@ class GeminiLLM(LLM):
                     )
                     self.clients.append(client)
 
-                    if(self.IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GEMINI : Working Key {api_key}")
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : Output: ",response.text)
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("GEMINI : Working Key %s", api_key)
+                        logger.debug("Output: %s", response.text)
 
                     # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
                     if(test_mode):
@@ -283,26 +269,21 @@ class GeminiLLM(LLM):
                                     )
                                 )
 
-                                if(self.IN_DEPTH_DEBUG):
-                                    print("===============================================================")
-                                    print(f"\tGEMINI : Working Model {model}")
-                                    print("Output: ",response.text)
+                                if self.IN_DEPTH_DEBUG:
+                                    logger.debug("GEMINI : Working Model %s", model)
+                                    logger.debug("Output: %s", response.text)
 
                             
                             except Exception as e:
-                                print("===============================================================")
-                                print(f"GEMINI : Model usage failed {api_key} : {model}")
-                                print("===============================================================")
+                                logger.error("GEMINI : Model usage failed %s : %s", api_key, model)
                                 # # Uncomment if you want to stop in between if model fails
                                 # raise UnknownError(f"GEMINI : Model usage failed {api_key} : {model}")
                         
 
                 except Exception as e:
-                    print("===============================================================")
-                    print(f"[{CURR_DIR}] : GEMINI : API usage failed {api_key} ")
-                    if(self.IN_DEPTH_DEBUG):
-                        print(e)
-                    print("===============================================================")
+                    logger.error("GEMINI : API usage failed %s", api_key)
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
                     # raise UnknownError(f"GEMINI : API Error Initialising or 1st Model in GEMINI_LLM failed : with API key {api_key}")
                     # print("===============================================================")
@@ -321,7 +302,7 @@ class GeminiLLM(LLM):
     def _get_current(self):
         with self._lock:
             if self.DEBUG:
-                print(f"Using Model : {self.models[self.current_model_idx]}")
+                logger.info("Using Model: %s", self.models[self.current_model_idx])
             return (
                 self.clients[self.current_client_idx],
                 self.models[self.current_model_idx]
@@ -373,9 +354,8 @@ class GeminiLLM(LLM):
 
                     output_text = response.text
 
-                    if(self.IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : {user_input}      :       {output_text}")
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("%s : %s", user_input, output_text)
 
                     if json_mode:
                         return json.loads(output_text)
@@ -383,22 +363,19 @@ class GeminiLLM(LLM):
 
                 except Exception as e:
                     if self.IN_DEPTH_DEBUG:
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : GEMINI Unknown error on key {self.current_client_idx}: {e}")
+                        logger.debug("GEMINI Unknown error on key %s", self.current_client_idx, exc_info=True)
                     keys_tried += 1
                     self._rotate_client()
 
             if self.IN_DEPTH_DEBUG:
-                print("===============================================================")
-                print(f"[{CURR_DIR}] : GEMINI All keys exhausted for model '{self.models[self.current_model_idx]}'. Rotating model.")
+                logger.debug("GEMINI All keys exhausted for model '%s'. Rotating model.", self.models[self.current_model_idx])
 
             models_tried += 1
             self._rotate_model()
 
 
         if self.DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : GEMINI All keys x all models exhausted.")
+            logger.info("GEMINI All keys x all models exhausted.")
         return None
     
 
@@ -448,11 +425,9 @@ class CereBrasLLM(LLM):
                         ],
                     )
                     self.clients.append(client)
-                    if(self.IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : CEREBRAS : Working Key {api_key}")
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : Output: ",response.choices[0].message.content)
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("CEREBRAS : Working Key %s", api_key)
+                        logger.debug("Output: %s", response.choices[0].message.content)
 
                     # # What is the current api fails for 1/2 model and works on other -> just give a warning to user 
                     if(test_mode):
@@ -475,25 +450,20 @@ class CereBrasLLM(LLM):
                                     ],
                                 )
 
-                                if(self.IN_DEPTH_DEBUG):
-                                    print("===============================================================")
-                                    print(f"\tCEREBRAS : Working Model {model}")
-                                    print("Outout: ",response.choices[0].message.content)
+                                if self.IN_DEPTH_DEBUG:
+                                    logger.debug("CEREBRAS : Working Model %s", model)
+                                    logger.debug("Output: %s", response.choices[0].message.content)
 
 
                             except Exception as e:
-                                print("===============================================================")
-                                print(f"CEREBRAS : Model usage failed {api_key} : {model}")
-                                print("===============================================================")
+                                logger.error("CEREBRAS : Model usage failed %s : %s", api_key, model)
                                 # # Uncomment if you want to stop code if 'model' fails
                                 # raise UnknownError(f"CEREBRAS : Model usage failed {api_key} : {model}")
                         
                 except Exception as e:
-                    print("===============================================================")
-                    print(f"[{CURR_DIR}] : CEREBRAS : Model usage failed {api_key}")
-                    if(self.IN_DEPTH_DEBUG):
-                        print(e)
-                    print("===============================================================")
+                    logger.error("CEREBRAS : Model usage failed %s", api_key)
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
                     # raise UnknownError(f"CEREBRAS : API Error Initialising or 1st Model in CEREBRAS_LLM failed : with API key {api_key}")
                     # print("===============================================================")
@@ -512,7 +482,7 @@ class CereBrasLLM(LLM):
     def _get_current(self):
         with self._lock:
             if self.DEBUG:
-                print(f"Using Model : {self.models[self.current_model_idx]}")
+                logger.info("Using Model: %s", self.models[self.current_model_idx])
             return (
                 self.clients[self.current_client_idx],
                 self.models[self.current_model_idx]
@@ -570,9 +540,8 @@ class CereBrasLLM(LLM):
                     parsed_response = response.parse()
                     output_text = parsed_response.choices[0].message.content
 
-                    if(self.IN_DEPTH_DEBUG):
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : {user_input}      :       {output_text}")
+                    if self.IN_DEPTH_DEBUG:
+                        logger.debug("%s : %s", user_input, output_text)
 
                     if json_mode:
                         return json.loads(output_text)
@@ -580,20 +549,17 @@ class CereBrasLLM(LLM):
 
                 except Exception as e:
                     if self.IN_DEPTH_DEBUG:
-                        print("===============================================================")
-                        print(f"[{CURR_DIR}] : CEREBRAS Unknown error on key {self.current_client_idx}: {e}")
+                        logger.debug("CEREBRAS Unknown error on key %s", self.current_client_idx, exc_info=True)
                     keys_tried += 1
                     self._rotate_client()
 
             if self.IN_DEPTH_DEBUG:
-                print("===============================================================")
-                print(f"[{CURR_DIR}] : CEREBRAS All keys exhausted for model '{self.models[self.current_model_idx]}'. Rotating model.")
+                logger.debug("CEREBRAS All keys exhausted for model '%s'. Rotating model.", self.models[self.current_model_idx])
 
             models_tried += 1
             self._rotate_model()
 
 
         if self.DEBUG:
-            print("===============================================================")
-            print(f"[{CURR_DIR}] : CEREBRAS All keys x all models exhausted.")
+            logger.info("CEREBRAS All keys x all models exhausted.")
         return None
