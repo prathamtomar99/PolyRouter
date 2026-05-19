@@ -1,18 +1,16 @@
-# LLM-Gateway-Service
+# PolyRouter
 
 ![Python](https://img.shields.io/badge/Python-3-blue)
 ![Architecture](https://img.shields.io/badge/Architecture-Config--Driven%20LLM%20Router-0A84FF)
 ![License](https://img.shields.io/badge/License-TBD-lightgrey)
 
-> A configuration-first multi-provider LLM routing layer that automatically rotates API keys, client providers, and model candidates when a request fails due to exhaustion, invalid credentials, or model-specific limits.
+PolyRouter is a lightweight Python library that routes requests across multiple LLM providers. It helps applications achieve deterministic failover by rotating API keys, client providers, and model candidates when requests fail.
 
 ## Overview
 
-LLM-Gateway-Service is a lightweight Python project for teams that operate across multiple LLM providers and need deterministic failover without building custom retry logic in every application.
+This repository provides an orchestration layer that can be embedded in your application to manage provider rotation, API-key pools, and model fallbacks. Keys are loaded from the environment (see `.env`), and the orchestrator tries configured provider/model/key combinations until a request succeeds or all combinations are exhausted.
 
-The project is designed around a single operational idea: developers should define provider pools and debugging behavior in `config.py`, populate API keys in `.env`, and let the orchestration layer handle client rotation when one provider or model becomes unavailable. That makes it suitable for production workloads where reliability matters more than coupling to a single vendor.
-
-The repository currently centers on three provider families:
+Example provider adapters included in this snapshot:
 
 - Groq
 - Google Gemini
@@ -66,89 +64,48 @@ The intended behavior is simple:
 ## Project Structure
 
 ```text
-LLM-Gateway-Service/
-├── config.py           # Provider lists, key counts, and debug switches
-├── Exceptions.py       # Custom exception types used by the orchestration layer
-├── LLMClients.py       # Abstract client contract and provider-specific routing logic
-├── LLMOrchestrator.py  # Top-level orchestration entry point
-├── requirements.txt    # Python dependencies
-├── .env.template       # Example environment variables for API keys
-└── README.md           # Project documentation
+PolyRouter/
+├── examples/                # Example usage scenarios
+│   └── basic_usage.py
+├── polyrouter/              # Library source
+│   ├── Exceptions.py
+│   ├── LLMClients.py
+│   ├── LLMOrchestrator.py
+│   └── __init__.py
+├── .env                     # (example present in repo snapshot)
+├── requirements-dev.txt     # Development / runtime deps
+└── README.md
 ```
 
 ## Installation
 
-<details>
-<summary>Local setup</summary>
-
-1. Clone the repository.
+Local setup (recommended):
 
 ```bash
 git clone <repository-url>
-cd LLM-Gateway-Service
-```
-
-2. Create and activate a virtual environment.
-
-```bash
+cd PolyRouter
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-3. Install dependencies.
-
-```bash
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-</details>
+### Environment variables
 
-<details>
-<summary>Environment variables</summary>
-
-Copy `.env.template` to `.env` and populate the keys for every provider you plan to use.
+This repo includes a `.env` file in the snapshot. In normal usage copy and populate a local `.env` (do not commit secrets):
 
 ```bash
-cp .env.template .env
+cp .env .env.local
+# edit .env.local and export provider API keys, e.g.:
+# GROQ_API_KEY0=...
+# GEMINI_API_KEY0=...
 ```
 
-Example shape:
+The examples use environment variables named like `GROQ_API_KEY0`, `GEMINI_API_KEY0`, etc.
 
-```env
-GROQ_API_KEY0=...
-GROQ_API_KEY1=...
-GROQ_API_KEY2=...
+### Dependencies
 
-GEMINI_API_KEY0=...
-GEMINI_API_KEY1=...
-GEMINI_API_KEY2=...
-
-CEREBRAS_API_KEY0=...
-CEREBRAS_API_KEY1=...
-CEREBRAS_API_KEY2=...
-```
-
-Keep the number of indexed keys aligned with the counts in `config.py`. If you change the number of active keys, update the corresponding `*_KEY` value in `config.py` so the router knows how many credentials to scan.
-
-</details>
-
-<details>
-<summary>Dependencies</summary>
-
-The project relies on the following core packages:
-
-| Package              | Purpose                                 |
-| -------------------- | --------------------------------------- |
-| `groq`               | Groq client integration                 |
-| `google-genai`       | Gemini client integration               |
-| `cerebras_cloud_sdk` | Cerebras client integration             |
-| `python-dotenv`      | Loads environment variables from `.env` |
-| `tenacity`           | Retry primitives for failure handling   |
-
-Install them with `pip install -r requirements.txt`.
-
-</details>
+Dependencies used by examples and adapters may include provider SDKs and `python-dotenv`. Install via `requirements-dev.txt`.
 
 <details>
 <summary>Build / verification steps</summary>
@@ -197,28 +154,32 @@ CEREBRAS_KEY = 1
 
 ## Usage
 
-The repository is designed to be integrated into an application layer that calls the orchestrator or provider client abstraction. A typical integration pattern is:
+See `examples/basic_usage.py` for a minimal example. The orchestrator can be constructed directly in your application; you do not need a `config.py` file if you prefer to pass provider settings programmatically.
+
+Minimal usage:
 
 ```python
 from dotenv import load_dotenv
-from config import DEBUG, IN_DEPTH_DEBUG
+from polyrouter.LLMOrchestrator import LLMOrchestrator
+import os
 
 load_dotenv()
 
-# Wire your application entry point to the orchestrator layer here.
-# The router will then try the configured provider/model/key pools
-# and rotate automatically when a request fails.
+llm = LLMOrchestrator(
+	groq={
+		"groq_models": ["openai/gpt-oss-120b"],
+		"groq_keys": [os.getenv("GROQ_API_KEY0")],
+	},
+	debug=True,
+	verbose=True,
+	prompt="You are a helpful assistant",
+)
+
+response = llm.request()
+print(response)
 ```
 
-### Debugging flow
-
-When `DEBUG` and `IN_DEPTH_DEBUG` are enabled, the router is expected to emit trace information around:
-
-- selected provider family
-- chosen model
-- active API key index
-- retry or rotation reason
-- exhaustion state when no valid combinations remain
+When `debug`/`verbose` are enabled the orchestrator prints provider, model and key selection and rotation decisions.
 
 ## API / CLI
 

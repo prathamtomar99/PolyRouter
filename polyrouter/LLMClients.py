@@ -50,7 +50,6 @@ class GroqLLM(LLM):
         self.clients = []
 
         # storing all client so that we dont get any issue once clients are build
-        print("GROQ_KEY :",GROQ_KEY)
         for api_key in GROQ_KEY:
             if api_key and api_key.startswith("gsk"):
 
