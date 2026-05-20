@@ -1,0 +1,7 @@
+prune examples
+prune testenv
+exclude .ignore
+exclude README.md
+exclude requirements.txt
+exclude requirements-dev.txt
+exclude temp.py
