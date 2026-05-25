@@ -4,22 +4,30 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polyrouter"
-version = "1.0.0"
-description = "A routing/orchestration library (adjust as needed)"
-readme = "README.md"
+version = "1.2.0"
+description = "A provider/model/key routing/orchestration library for LLMs."
+readme = "PYPI_README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Pratham Tomar", email = "prathamtomar1733@gmail.com" }]
+authors = [{ name = "Pratham Tomar", email = "partham68209@gmail.com" }]
 dependencies = [
-    "cerebras_cloud_sdk>=1.67.0",
-    "google-genai>=2.4.0",
-    "groq>=1.2.0",
+    "cerebras_cloud_sdk==1.67.0",
+    "google-genai==2.4.0",
+    "groq==1.1.0",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
+    "Development Status :: 4 - Beta", 
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Artificial Life",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12", 
 ]
 
 [tool.setuptools.packages.find]

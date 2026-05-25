@@ -89,7 +89,7 @@ llm = LLMOrchestrator(
     prompt="You are a good chatbot",
     temperature=0.2,
     max_output_tokens=400,
-    test_mode=1
+    test_mode=1 # used to test each model * each api * each provider
 )
 
 # # Init a object for usage

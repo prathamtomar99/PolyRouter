@@ -1,7 +1,9 @@
 prune examples
-prune testenv
+prune *venv
+prune *.venv
 exclude .ignore
 exclude README.md
 exclude requirements.txt
 exclude requirements-dev.txt
 exclude temp.py
+exclude .*env

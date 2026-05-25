@@ -87,12 +87,20 @@ class GroqLLM(LLM):
 
 
                             except Exception as e:
-                                logger.error("GROQ : Model usage failed ....%s : %s", api_key[10:], model)
+                                logger.error(
+                                    "GROQ : Model usage failed ....%s : %s | exception: %s",
+                                    api_key[10:], model, e,
+                                    exc_info=True
+                                )
                                 # # Uncomment if you want to stop code if 'model' fails
                                 # raise UnknownError(f"GROQ : Model usage failed -> ....{api_key[10:]} : {model}")
                         
                 except Exception as e:
-                    logger.error("GROQ : Model usage failed ....%s", api_key[10:])
+                    logger.error(
+                        "GROQ : API usage failed ....%s | exception: %s",
+                        api_key[10:], e,
+                        exc_info=True
+                    )
                     if self.IN_DEPTH_DEBUG:
                         logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
@@ -275,13 +283,21 @@ class GeminiLLM(LLM):
 
                             
                             except Exception as e:
-                                logger.error("GEMINI : Model usage failed ....%s : %s", api_key[10:], model)
+                                logger.error(
+                                    "GEMINI : Model usage failed ....%s : %s | exception: %s",
+                                    api_key[10:], model, e,
+                                    exc_info=True
+                                )
                                 # # Uncomment if you want to stop in between if model fails
                                 # raise UnknownError(f"GEMINI : Model usage failed ....{api_key[10:]} : {model}")
                         
 
                 except Exception as e:
-                    logger.error("GEMINI : API usage failed ....%s", api_key[10:])
+                    logger.error(
+                        "GEMINI : API usage failed ....%s | exception: %s",
+                        api_key[10:], e,
+                        exc_info=True
+                    )
                     if self.IN_DEPTH_DEBUG:
                         logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
@@ -456,12 +472,20 @@ class CereBrasLLM(LLM):
 
 
                             except Exception as e:
-                                logger.error("CEREBRAS : Model usage failed ....%s : %s", api_key[10:], model)
+                                logger.error(
+                                    "CEREBRAS : Model usage failed ....%s : %s | exception: %s",
+                                    api_key[10:], model, e,
+                                    exc_info=True
+                                )
                                 # # Uncomment if you want to stop code if 'model' fails
                                 # raise UnknownError(f"CEREBRAS : Model usage failed ....{api_key[10:]} : {model}")
                         
                 except Exception as e:
-                    logger.error("CEREBRAS : Model usage failed ....%s", api_key[10:])
+                    logger.error(
+                        "CEREBRAS : Model usage failed ....%s | exception: %s",
+                        api_key[10:], e,
+                        exc_info=True
+                    )
                     if self.IN_DEPTH_DEBUG:
                         logger.debug("Exception details", exc_info=True)
                     # # Uncomment if you want to fail if api key fails
