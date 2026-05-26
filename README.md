@@ -101,12 +101,15 @@ See `examples/basic_usage.py` for a minimal example.
 
 When `debug`/`verbose` are enabled the orchestrator logs provider, model and key selection and rotation decisions.
 
-## Deployment
 
-Because this project is a routing library, deployment usually means shipping it as part of a larger Python service or worker.
+## CI/CD & Publishing
+
+This package utilizes GitHub Actions for automated testing and deployment. Merging to the main branch with an updated version tag automatically triggers the publishing workflow, securely building the distribution and pushing the latest release directly to PyPI.
+
+```
+https://pypi.org/project/polyrouter/
+```
 
 ## License
 
-License: TBD.
-
-Add the repository's chosen license here once it is finalized, and keep the license file in sync with this section.
+This project is licensed under the MIT License - see the LICENSE file for details.
