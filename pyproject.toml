@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polyrouter"
-version = "1.2.0"
+version = "1.2.1"
 description = "A provider/model/key routing/orchestration library for LLMs."
 readme = "PYPI_README.md"
 requires-python = ">=3.11"

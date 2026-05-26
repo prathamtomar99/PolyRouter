@@ -1,0 +1,37 @@
+name : Build and Publish to PYPI
+on :
+  push:
+    branches:
+      - main
+  pull:
+    branches:
+      - main
+
+jobs:
+  build-publish:
+    name: build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Build
+        run: python3 -m pip install build
+
+      - name: Install Twine
+        run:  python3 -m pip install twine
+
+      - name: Bundle Package
+        run: python3 -m build
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/   
+      
