@@ -1,7 +1,14 @@
-from polyrouter import LLMOrchestrator
 import os
 from dotenv import load_dotenv
 import logging
+import time
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from polyrouter import LLMOrchestrator
 
 logging.basicConfig(
     filename="poly_router.log",
@@ -40,11 +47,15 @@ GROQ_KEYS = [
     os.getenv("GROQ_API_KEY4"),
     os.getenv("GROQ_API_KEY5"),
 ]
+print(GROQ_KEYS[0][:10])
+if(GROQ_KEYS[0].strip()==""):
+    raise
 
 GEMINI_MODEL = [
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite"
 ]
+
 GEMINI_KEYS = [
     os.getenv("GEMINI_API_KEY0"),
     os.getenv("GEMINI_API_KEY1"),
@@ -55,20 +66,25 @@ GEMINI_KEYS = [
     os.getenv("GEMINI_API_KEY6"),
     os.getenv("GEMINI_API_KEY7")
 ]
+print(GEMINI_KEYS[0][:10])
+if(GEMINI_MODEL[0].strip()==""):
+    raise
 
 CEREBRAS_MODEL = [
-    "llama3.1-8b", 
-    "gpt-oss-120b"
+    "gemma-4-31b",
+    "gpt-oss-120b",
 ]
 CEREBRAS_KEYS = [
-    os.getenv("CEREBRAS_API_KEY0"),
+    os.getenv("CEREBRAS_API_KEY4"),
+    os.getenv("CEREBRAS_API_KEY5"),
     os.getenv("CEREBRAS_API_KEY1"),
+    os.getenv("CEREBRAS_API_KEY0"),
     os.getenv("CEREBRAS_API_KEY2"),
     os.getenv("CEREBRAS_API_KEY3"),
-    os.getenv("CEREBRAS_API_KEY4"),
-    os.getenv("CEREBRAS_API_KEY5")
 ]
-
+print(CEREBRAS_KEYS[0][:10])
+if(CEREBRAS_KEYS[0].strip()==""):
+    raise
 
 # # Test each llm with API * MODEL
 llm = LLMOrchestrator(
@@ -76,19 +92,19 @@ llm = LLMOrchestrator(
         "groq_models" : GROQ_MODEL,
         "groq_keys" : GROQ_KEYS,
     },
-    # gemini={
-    #     "gemini_models" : GEMINI_MODEL,
-    #     "gemini_keys" : GEMINI_KEYS,
-    # },
-    cerebras={
-        "cerebras_models": CEREBRAS_MODEL,
-        "cerebras_keys" : CEREBRAS_KEYS
+    gemini={
+        "gemini_models" : GEMINI_MODEL,
+        "gemini_keys" : GEMINI_KEYS,
     },
+    # cerebras={
+    #     "cerebras_models": CEREBRAS_MODEL,
+    #     "cerebras_keys" : CEREBRAS_KEYS
+    # },
     debug=1,        # major logs
     verbose=1,      # in-depth trace
     prompt="You are a good chatbot",
     temperature=0.2,
-    max_output_tokens=400,
+    max_output_tokens=100,
     test_mode=1 # used to test each model * each api * each provider
 )
 
@@ -116,3 +132,14 @@ llm = LLMOrchestrator(
 
 # print(llm.call("What is the only thing that makes a programmers happy?"))
 # print(llm.call("Divided by nations, united by coding"))
+
+start_time = time.time()
+for i in range(100):
+    print(i)
+    try:
+        llm.call("Reply OK.")
+    except Exception as e:
+        print(e)
+    
+end_time = time.time();
+print("Processed 100 Requests in: ",end_time-start_time)
